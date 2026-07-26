@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum DoctorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingSubjectType {
+  SELF
+  FAMILY_MEMBER
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(PATIENT)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions       Session[]
+  accounts       Account[]
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  expiresAt    DateTime
+  token        String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  ipAddress    String?
+  userAgent    String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                      String    @id @default(uuid())
+  accountId               String
+  providerId              String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken             String?
+  refreshToken            String?
+  idToken                 String?
+  accessTokenExpiresAt    DateTime?
+  refreshTokenExpiresAt   DateTime?
+  scope                   String?
+  password                String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id           String    @id @default(uuid())
+  identifier   String
+  value        String
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([identifier, value])
+}
+
+model PatientProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone       String?
+  dateOfBirth DateTime? @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  familyMembers   FamilyMember[]
+  appointments    Appointment[]
+  consentRecords  ConsentRecord[]
+  aiAuditLogs     AiInteractionAuditLog[]
+  ratings         AppointmentRating[]
+}
+
+model FamilyMember {
+  id               String   @id @default(uuid())
+  patientProfileId String
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
+  fullName         String
+  dateOfBirth      DateTime @db.Date
+  relationship     String
+  createdAt        DateTime @default(now())
+
+  appointments Appointment[]
+}
+
+model DoctorProfile {
+  id                  String                  @id @default(uuid())
+  userId              String                  @unique
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                 String?                 @db.Text
+  feeCents            Int
+  applicationStatus   DoctorApplicationStatus @default(PENDING)
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  reviewNote          String?                 @db.Text
+  ratingAverage       Decimal                 @default(0) @db.Decimal(2, 1)
+  ratingCount         Int                     @default(0)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  specialties  Specialty[]
+  availability DoctorAvailability[]
+  appointments Appointment[]
+  ratings      AppointmentRating[]
+
+  @@index([applicationStatus])
+}
+
+model Specialty {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.Text
+
+  doctors DoctorProfile[]
+}
+
+model DoctorAvailability {
+  id                     String   @id @default(uuid())
+  doctorProfileId        String
+  doctorProfile          DoctorProfile @relation(fields: [doctorProfileId], references: [id], onDelete: Cascade)
+  dayOfWeek              Int      // 0 = Sunday .. 6 = Saturday
+  workStart              DateTime @db.Time(6)
+  workEnd                DateTime @db.Time(6)
+  breakStart             DateTime? @db.Time(6)
+  breakEnd               DateTime? @db.Time(6)
+  sessionDurationMinutes Int
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([doctorProfileId, dayOfWeek])
+}
+
+model Appointment {
+  id                String             @id @default(uuid())
+  patientProfileId  String
+  patientProfile    PatientProfile     @relation(fields: [patientProfileId], references: [id])
+  doctorProfileId   String
+  doctorProfile     DoctorProfile      @relation(fields: [doctorProfileId], references: [id])
+  familyMemberId    String?
+  familyMember      FamilyMember?      @relation(fields: [familyMemberId], references: [id])
+  bookingSubjectType BookingSubjectType @default(SELF)
+  startUtc          DateTime           @db.Timestamptz
+  durationMinutes   Int
+  status            AppointmentStatus  @default(PENDING)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  reason        AppointmentReason?
+  statusHistory AppointmentStatusHistory[]
+  rating        AppointmentRating?
+
+  // Partial unique index (doctorProfileId, startUtc) WHERE status IN
+  // ('pending','confirmed') CANNOT be expressed here — Prisma's schema DSL
+  // has no partial-index syntax. Added by hand in the migration SQL, step 7.
+  @@index([doctorProfileId, startUtc])
+  @@index([patientProfileId])
+}
+
+model AppointmentReason {
+  id                  String    @id @default(uuid())
+  appointmentId       String    @unique
+  appointment         Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  originalText        String    @db.Text
+  aiSummaryJson        Json?
+  aiSummaryApprovedAt DateTime?
+}
+
+model AppointmentStatusHistory {
+  id             String            @id @default(uuid())
+  appointmentId  String
+  appointment    Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  fromStatus     AppointmentStatus?
+  toStatus       AppointmentStatus
+  changedByUserId String
+  changedAt      DateTime          @default(now())
+}
+
+model AppointmentRating {
+  id                String   @id @default(uuid())
+  appointmentId     String   @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientProfileId  String
+  patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id])
+  doctorProfileId   String
+  doctorProfile     DoctorProfile @relation(fields: [doctorProfileId], references: [id])
+  score             Int      // 1-5, enforced at application layer + CHECK constraint
+  comment           String?  @db.Text
+  createdAt         DateTime @default(now())
+}
+
+model ConsentRecord {
+  id                String   @id @default(uuid())
+  patientProfileId  String
+  patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
+  consentType       String   // e.g. "AI_ASSISTANT"
+  policyVersion     Int
+  grantedAt         DateTime @default(now())
+  revokedAt         DateTime?
+}
+
+model AiInteractionAuditLog {
+  id                String   @id @default(uuid())
+  patientProfileId  String
+  patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id])
+  appointmentId     String?
+  redFlagRuleId     String?
+  redFlagTriggered  Boolean  @default(false)
+  outputValidated   Boolean?
+  inputHash         String?
+  promptTokens      Int?
+  completionTokens  Int?
+  createdAt         DateTime @default(now())
+
+  @@index([patientProfileId])
+}
