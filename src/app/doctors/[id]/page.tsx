@@ -3,6 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getDoctorById, getSlotsForDoctorOnDate } from '@/lib/doctors/repository';
 import { HOSPITAL_TIMEZONE } from '@/lib/scheduling/slots';
+import { isWithinBookingWindow, MAX_BOOKING_WINDOW_DAYS } from '@/lib/scheduling/policy';
+import { ExtendedDatePicker } from './_components/extended-date-picker';
 
 interface DoctorDetailPageProps {
     params: Promise<{ id: string }>;
@@ -44,7 +46,9 @@ export default async function DoctorDetailPage({ params, searchParams }: DoctorD
     if (!doctor) notFound();
 
     const availableDates = nextSevenDateStrings();
-    const selectedDateKey = date && availableDates.includes(date) ? date : availableDates[0];
+    const selectedDateKey = date && isWithinBookingWindow(date, availableDates[0], MAX_BOOKING_WINDOW_DAYS)
+        ? date
+        : availableDates[0];
     const slots = await getSlotsForDoctorOnDate(doctor.id, selectedDateKey);
 
     const initials = doctor.user.name
@@ -153,8 +157,8 @@ export default async function DoctorDetailPage({ params, searchParams }: DoctorD
                         </h2>
 
                         {/* Date Selector */}
-                        <div className="mb-8">
-                            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                        <div className="mb-8 space-y-4">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 font-mono">
                                 1. Select Date
                             </h3>
 
@@ -188,6 +192,12 @@ export default async function DoctorDetailPage({ params, searchParams }: DoctorD
                                     );
                                 })}
                             </nav>
+
+                            <ExtendedDatePicker
+                                doctorId={doctor.id}
+                                minDate={availableDates[0]}
+                                maxDaysAhead={MAX_BOOKING_WINDOW_DAYS}
+                            />
                         </div>
 
                         {/* Time Slots */}

@@ -4,6 +4,8 @@ import { requireRole } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { BookingForm } from './booking-form';
 import { HOSPITAL_TIMEZONE } from '@/lib/scheduling/slots';
+import { shouldAutoConfirm, AUTO_CONFIRM_WINDOW_DAYS } from '@/lib/scheduling/policy';
+
 interface BookingPageProps {
     params: Promise<{ doctorId: string }>;
     searchParams: Promise<{ slot?: string }>;
@@ -107,6 +109,12 @@ export default async function BookingPage({ params, searchParams }: BookingPageP
                                 <p className="font-semibold text-slate-900">
                                     {slotLabel}
                                 </p>
+
+                                {!shouldAutoConfirm(new Date(slot)) && (
+                                    <p className="mt-2 text-xs italic text-amber-700 bg-amber-50 rounded-xl p-2.5 border border-amber-200/80">
+                                        ⏳ This date is more than {AUTO_CONFIRM_WINDOW_DAYS} days out — your appointment will be held as <strong>pending</strong> until the doctor confirms it.
+                                    </p>
+                                )}
                             </div>
 
                             {/* Fee */}

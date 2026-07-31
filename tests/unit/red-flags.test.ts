@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkRedFlags,checkTextForRedFlags, RED_FLAG_RULES } from '@/lib/ai/red-flags';
+import { checkRedFlags, checkTextForRedFlags, RED_FLAG_RULES } from '@/lib/ai/red-flags';
 
 describe('checkRedFlags', () => {
   it('returns null when nothing is selected', () => {
@@ -36,5 +36,11 @@ describe('checkTextForRedFlags', () => {
   });
   it('is case-insensitive', () => {
     expect(checkTextForRedFlags('CHEST PAIN since this morning')?.id).toBe('chest_pain');
+  });
+  it('detects "heart pain" as a chest_pain paraphrase', () => {
+    expect(checkTextForRedFlags('I have heart pain since morning')?.id).toBe('chest_pain');
+  });
+  it('detects informal phrasing for breathing difficulty', () => {
+    expect(checkTextForRedFlags('I feel breathless and gasping for air')?.id).toBe('breathing_difficulty');
   });
 });

@@ -15,7 +15,7 @@ interface AiSummaryPayload {
 
 interface AppointmentReason {
     originalText?: string | null;
-    aiSummaryJson?: unknown | null; // Added property here
+    aiSummaryJson?: unknown | null;
 }
 
 export interface AppointmentItem {
@@ -42,30 +42,58 @@ interface DoctorDashboardTabsProps {
 
 export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashboardTabsProps) {
     const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Helper formatted on client-side rendering
     const formatDate = (d: Date) =>
         new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(d));
 
+    // Filter logic helper
+    const filterAppointments = (items: AppointmentItem[]) => {
+        if (!searchQuery.trim()) return items;
+        const q = searchQuery.toLowerCase().trim();
+
+        return items.filter((a) => {
+            const patientName = a.patientProfile?.user?.name?.toLowerCase() ?? '';
+            const familyName = a.familyMember?.fullName?.toLowerCase() ?? '';
+            const reasonText = a.reason?.originalText?.toLowerCase() ?? '';
+
+            const aiSummary = a.reason?.aiSummaryJson as AiSummaryPayload | null;
+            const chiefComplaint = aiSummary?.structuredSummary?.chiefComplaint?.toLowerCase() ?? '';
+
+            return (
+                patientName.includes(q) ||
+                familyName.includes(q) ||
+                reasonText.includes(q) ||
+                chiefComplaint.includes(q)
+            );
+        });
+    };
+
+    const filteredUpcoming = filterAppointments(upcoming);
+    const filteredHistory = filterAppointments(history);
+
     return (
         <div className="space-y-6">
-            {/* Tab Navigation Header */}
-            <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Navigation & Controls Header */}
+            <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-4 md:flex-row md:items-center md:justify-between">
                 <nav className="flex space-x-2 rounded-2xl bg-slate-100/80 p-1.5 border border-slate-200/60 w-fit">
                     <button
                         type="button"
                         onClick={() => setActiveTab('upcoming')}
-                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold tracking-wide transition active:scale-95 ${activeTab === 'upcoming'
+                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold tracking-wide transition active:scale-95 ${
+                            activeTab === 'upcoming'
                                 ? 'bg-white text-teal-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
-                            }`}
+                        }`}
                     >
                         <span>Upcoming</span>
                         <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-bold ${activeTab === 'upcoming'
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-bold ${
+                                activeTab === 'upcoming'
                                     ? 'bg-teal-100 text-teal-800'
                                     : 'bg-slate-200 text-slate-700'
-                                }`}
+                            }`}
                         >
                             {upcoming.length}
                         </span>
@@ -74,16 +102,17 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                     <button
                         type="button"
                         onClick={() => setActiveTab('history')}
-                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold tracking-wide transition active:scale-95 ${activeTab === 'history'
+                        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold tracking-wide transition active:scale-95 ${
+                            activeTab === 'history'
                                 ? 'bg-white text-teal-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
-                            }`}
+                        }`}
                     >
                         <span>History</span>
                     </button>
                 </nav>
 
-                {/* Show History Range Filter only when History Tab is active */}
+                {/* Right controls: Range filter (History only) */}
                 {activeTab === 'history' && (
                     <div className="animate-in fade-in duration-200">
                         <HistoryRangeFilter />
@@ -91,10 +120,35 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                 )}
             </div>
 
+            {/* Global Search Bar */}
+            <div className="relative max-w-md">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input
+                    type="search"
+                    placeholder="Search by patient name or reason..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200/80 bg-white/80 pl-10 pr-9 py-3.5 text-sm text-slate-800 shadow-sm backdrop-blur-sm transition focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 placeholder:text-slate-400"
+                />
+                {searchQuery && (
+                    <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                        ✕
+                    </button>
+                )}
+            </div>
+
             {/* TAB CONTENT: UPCOMING */}
             {activeTab === 'upcoming' && (
                 <section className="space-y-5 animate-in fade-in duration-300">
-                    {upcoming.length === 0 ? (
+                    {filteredUpcoming.length === 0 ? (
                         <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
                             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,12 +156,14 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                                 </svg>
                             </div>
                             <p className="text-sm font-medium text-slate-500">
-                                No upcoming appointments scheduled.
+                                {upcoming.length === 0
+                                    ? 'No upcoming appointments scheduled.'
+                                    : `No upcoming appointments matching "${searchQuery}".`}
                             </p>
                         </div>
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {upcoming.map((a) => {
+                            {filteredUpcoming.map((a) => {
                                 const aiSummary = a.reason?.aiSummaryJson as AiSummaryPayload | null;
 
                                 return (
@@ -149,7 +205,6 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                                                         </>
                                                     )}
 
-                                                    {/* AI Summary Collapsible Container */}
                                                     {aiSummary && (
                                                         <details className="group rounded-2xl border border-teal-200/80 bg-teal-50/40 p-3.5 text-xs text-slate-800 transition my-2">
                                                             <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-teal-800 outline-none select-none hover:text-teal-900">
@@ -196,7 +251,7 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
             {/* TAB CONTENT: HISTORY */}
             {activeTab === 'history' && (
                 <section className="space-y-5 animate-in fade-in duration-300">
-                    {history.length === 0 ? (
+                    {filteredHistory.length === 0 ? (
                         <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
                             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -204,12 +259,14 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                                 </svg>
                             </div>
                             <p className="text-sm font-medium text-slate-500">
-                                No records found for the selected timeframe.
+                                {history.length === 0
+                                    ? 'No records found for the selected timeframe.'
+                                    : `No past records matching "${searchQuery}".`}
                             </p>
                         </div>
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {history.map((a) => {
+                            {filteredHistory.map((a) => {
                                 const aiSummary = a.reason?.aiSummaryJson as AiSummaryPayload | null;
 
                                 return (
@@ -223,14 +280,15 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                                                     {formatDate(a.startUtc)}
                                                 </p>
                                                 <span
-                                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase font-mono ${a.status === 'COMPLETED'
+                                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase font-mono ${
+                                                        a.status === 'COMPLETED'
                                                             ? 'bg-teal-50 text-teal-800 border border-teal-200'
                                                             : a.status === 'CANCELLED'
                                                                 ? 'bg-red-50 text-red-700 border border-red-200'
                                                                 : a.status === 'NO_SHOW'
                                                                     ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                                                     : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     {a.status}
                                                 </span>
@@ -260,7 +318,6 @@ export function DoctorDashboardTabs({ upcoming, history, timeZone }: DoctorDashb
                                                         </>
                                                     )}
 
-                                                    {/* AI Summary Collapsible Container */}
                                                     {aiSummary && (
                                                         <details className="group rounded-2xl border border-teal-200/80 bg-teal-50/40 p-3.5 text-xs text-slate-800 transition my-2">
                                                             <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-teal-800 outline-none select-none hover:text-teal-900">

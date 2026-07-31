@@ -48,3 +48,69 @@ export async function getAnalyticsSummary() {
 
   return { totalPatients, totalApprovedDoctors, totalPendingDoctors, statusCounts, estimatedRevenueCents };
 }
+
+export interface AdminDoctorSearchParams {
+  query?: string;
+  specialtyId?: string;
+}
+
+export async function searchDoctorsForAdmin(params: AdminDoctorSearchParams) {
+  const { query, specialtyId } = params;
+
+  // Deliberately no applicationStatus filter here -- unlike the public
+  // directory (searchDoctors, Milestone 2), admin needs to see EVERY
+  // doctor regardless of status, including pending and rejected ones.
+  const doctors = await prisma.doctorProfile.findMany({
+    where: {
+      ...(specialtyId ? { specialties: { some: { id: specialtyId } } } : {}),
+      ...(query ? { user: { name: { contains: query, mode: 'insensitive' } } } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { name: true, email: true, image: true } },
+      specialties: { select: { id: true, name: true } },
+    },
+  });
+
+  // One grouped query for all matched doctors' status breakdowns, instead
+  // of N+1 per-doctor queries.
+  const grouped = await prisma.appointment.groupBy({
+    by: ['doctorProfileId', 'status'],
+    where: { doctorProfileId: { in: doctors.map((d) => d.id) } },
+    _count: { _all: true },
+  });
+
+  const statusByDoctor = new Map<string, Record<string, number>>();
+  for (const row of grouped) {
+    const existing = statusByDoctor.get(row.doctorProfileId) ?? {};
+    existing[row.status] = row._count._all;
+    statusByDoctor.set(row.doctorProfileId, existing);
+  }
+
+  return doctors.map((d) => ({ ...d, appointmentCounts: statusByDoctor.get(d.id) ?? {} }));
+}
+
+export async function getDoctorPerformanceDetail(doctorProfileId: string) {
+  const doctor = await prisma.doctorProfile.findUnique({
+    where: { id: doctorProfileId },
+    include: {
+      user: { select: { name: true, email: true, image: true } },
+      specialties: { select: { name: true } },
+    },
+  });
+  if (!doctor) return null;
+
+  const appointments = await prisma.appointment.findMany({
+    where: { doctorProfileId },
+    orderBy: { startUtc: 'desc' },
+    take: 50, // capped -- oversight doesn't require an unbounded history
+    include: {
+      patientProfile: { include: { user: { select: { name: true } } } },
+      familyMember: true,
+      rating: true,
+      // reason intentionally NOT included -- see privacy note above
+    },
+  });
+
+  return { doctor, appointments };
+}

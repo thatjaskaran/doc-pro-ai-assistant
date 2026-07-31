@@ -78,4 +78,25 @@ describe('createAppointment', () => {
         const createCall = vi.mocked(prisma.appointment.create).mock.calls[0][0] as any;
         expect(createCall.data.reason.create.aiSummaryJson).toBeUndefined();
     });
+    it('creates a PENDING appointment when the slot is beyond the auto-confirm window', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-07-20T00:00:00Z'));
+
+        vi.mocked(prisma.patientProfile.findUniqueOrThrow).mockResolvedValue({ id: 'patient-1' } as any);
+        vi.mocked(prisma.doctorProfile.findFirst).mockResolvedValue({ id: 'doctor-1' } as any);
+        vi.mocked(prisma.doctorAvailability.findUnique).mockResolvedValue({ sessionDurationMinutes: 30 } as any);
+        vi.mocked(prisma.appointment.create).mockResolvedValue({ id: 'appt-1' } as any);
+
+        await createAppointment(formData({
+            doctorProfileId: '11111111-1111-4111-8111-111111111111',
+            slotStartUtc: '2026-08-15T09:00:00.000Z', // ~26 days out from the frozen "now"
+            bookingSubjectType: 'SELF',
+            reasonText: 'Routine follow-up scheduled well in advance.',
+        }));
+
+        const createCall = vi.mocked(prisma.appointment.create).mock.calls[0][0] as any;
+        expect(createCall.data.status).toBe('PENDING');
+
+        vi.useRealTimers();
+    });
 });

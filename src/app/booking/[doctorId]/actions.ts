@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { requireRole } from '@/lib/auth/session';
 import { aiGuidanceSchema } from '@/lib/ai/schema';
+import { shouldAutoConfirm } from '@/lib/scheduling/policy';
 
 const createAppointmentSchema = z.object({
   doctorProfileId: z.string().uuid(),
@@ -69,6 +70,8 @@ export async function createAppointment(formData: FormData) {
   });
   if (!template) return { error: 'This doctor has no availability on the selected day.' };
 
+  const initialStatus = shouldAutoConfirm(startUtc) ? 'CONFIRMED' : 'PENDING';
+
   let appointmentId: string;
   try {
     const appointment = await prisma.appointment.create({
@@ -79,7 +82,7 @@ export async function createAppointment(formData: FormData) {
         bookingSubjectType: data.bookingSubjectType,
         startUtc,
         durationMinutes: template.sessionDurationMinutes,
-        status: 'CONFIRMED',
+        status: initialStatus,
         reason: {
           create: {
             originalText: data.reasonText,
@@ -87,11 +90,12 @@ export async function createAppointment(formData: FormData) {
             aiSummaryApprovedAt: validatedAiSummary ? new Date() : undefined,
           },
         },
-        statusHistory: { create: [{ toStatus: 'CONFIRMED', changedByUserId: session.user.id }] },
+        statusHistory: { create: [{ toStatus: initialStatus, changedByUserId: session.user.id }] },
       },
     });
     appointmentId = appointment.id;
   } catch (e) {
+    // ...unchanged
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return { error: 'This slot was just booked by someone else. Please choose another time.' };
     }

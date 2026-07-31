@@ -25,6 +25,7 @@ const ROLE_LINKS: Record<string, { href: string; label: string }[]> = {
   ADMIN: [
     { href: '/admin/dashboard', label: 'Overview' },
     { href: '/admin/doctors', label: 'Doctor Applications' },
+    { href: '/admin/doctors/performance', label: 'Doctor Performance' },
     { href: '/admin/specialties', label: 'Specialties' },
   ],
 };

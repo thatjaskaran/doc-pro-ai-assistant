@@ -34,7 +34,7 @@ export function Footer() {
           <div className="lg:col-span-5 lg:flex lg:justify-end">
             <nav
               aria-label="Footer Navigation"
-              className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm"
+              className="flex flex-wrap items-center gap-x-6 m-2 gap-y-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm"
             >
               <Link
                 href="/doctors"
@@ -43,8 +43,18 @@ export function Footer() {
                 Find a Doctor
               </Link>
             </nav>
+            <nav
+              aria-label="Footer Navigation"
+              className="flex flex-wrap items-center gap-x-6 m-2 gap-y-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm"
+            >
+              <Link
+                href="/ai-assist"
+                className="text-xs font-semibold text-slate-700 transition-colors duration-150 hover:text-teal-800"
+              >
+                AI Assistant
+              </Link>
+            </nav>
           </div>
-
         </div>
 
         {/* Bottom Copyright Section */}
@@ -52,7 +62,7 @@ export function Footer() {
           <p>© {year} Doc Pro. Built as a demonstration project.</p>
           <div className="flex items-center gap-2 text-teal-800 font-mono text-[11px] font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-teal-600 animate-pulse" />
-            AI Assistant Module Coming Soon
+            AI Assistant Module is Live
           </div>
         </div>
       </div>

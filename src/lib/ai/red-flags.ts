@@ -13,7 +13,7 @@ export const RED_FLAG_RULES: RedFlagRule[] = [
   {
     id: 'chest_pain',
     label: 'Chest pain or pressure',
-    guidance: 'Chest pain or pressure can indicate a medical emergency. Please seek immediate in-person or emergency care rather than waiting for an appointment.',
+    guidance: "You mentioned chest pain. Chest pain can have many causes, and most are not serious — but it can occasionally be a sign of something that needs proper attention, and it isn't possible to tell the difference through a chat conversation. To be safe, please contact a doctor or urgent care now rather than continuing here.",
   },
   {
     id: 'breathing_difficulty',
@@ -48,13 +48,36 @@ export function checkRedFlags(selectedIds: string[]): RedFlagRule | null {
   return RED_FLAG_RULES.find((rule) => selectedIds.includes(rule.id)) ?? null;
 }
 
+// src/lib/ai/red-flags.ts
 const RED_FLAG_KEYWORDS: Record<string, string[]> = {
-  chest_pain: ['chest pain', 'chest pressure', 'chest tightness'],
-  breathing_difficulty: ["can't breathe", 'cant breathe', 'difficulty breathing', 'shortness of breath', 'trouble breathing'],
-  severe_bleeding: ['severe bleeding', 'uncontrolled bleeding', "won't stop bleeding", "wont stop bleeding"],
-  loss_of_consciousness: ['fainted', 'passed out', 'lost consciousness', 'severe confusion'],
-  stroke_signs: ["can't speak", 'cant speak', 'face drooping', 'sudden numbness', 'one side weak'],
-  suicidal_ideation: ['kill myself', 'suicide', 'end my life', 'harm myself', 'hurt someone'],
+  chest_pain: [
+    'chest pain', 'chest pressure', 'chest tightness', 'chest hurts', 'chest hurting',
+    'heart pain', 'heart hurts', 'heart hurting', 'heart is hurting', 'pain in my chest', 'pain in my heart',
+    'tightness in my chest', 'squeezing in my chest', 'crushing pain',
+  ],
+  breathing_difficulty: [
+    "can't breathe", 'cant breathe', 'difficulty breathing', 'shortness of breath',
+    'trouble breathing', 'hard to breathe', 'breathless', 'gasping for air',
+    "can't catch my breath", 'cant catch my breath', 'struggling to breathe',
+  ],
+  severe_bleeding: [
+    'severe bleeding', 'uncontrolled bleeding', "won't stop bleeding", "wont stop bleeding",
+    'bleeding a lot', 'heavy bleeding', 'blood everywhere', "can't stop the bleeding",
+  ],
+  loss_of_consciousness: [
+    'fainted', 'passed out', 'lost consciousness', 'severe confusion', 'blacked out',
+    'blacking out', 'not responsive', 'unresponsive',
+  ],
+  stroke_signs: [
+    "can't speak", 'cant speak', 'face drooping', 'sudden numbness', 'one side weak',
+    'slurred speech', 'face is drooping', 'arm feels weak', "can't move my arm",
+    'cant move my arm', 'one side of my face',
+  ],
+  suicidal_ideation: [
+    'kill myself', 'suicide', 'end my life', 'harm myself', 'hurt someone',
+    "don't want to live", 'dont want to live', 'want to die', 'better off dead',
+    'end it all',
+  ],
 };
 
 // Defense-in-depth, not a replacement for the checkbox screen above. Exact

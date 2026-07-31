@@ -57,11 +57,11 @@ export default async function BookingConfirmationPage({ searchParams }: Confirma
                         </div>
 
                         <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-teal-800 font-mono">
-                            Appointment Confirmed
+                            Appointment {appointment.status}
                         </p>
 
                         <h1 className="mt-2 text-3xl font-serif font-bold tracking-tight text-slate-900 sm:text-4xl">
-                            Your booking is confirmed!
+                            Your booking is {appointment.status}!
                         </h1>
 
                         <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-md mx-auto">

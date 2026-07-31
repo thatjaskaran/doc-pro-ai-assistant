@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { requireRole } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { isCancellable } from '@/lib/scheduling/policy';
 import { CancelButton } from './cancel-button';
-import { RatingForm } from './rating-form';
 import { HOSPITAL_TIMEZONE } from '@/lib/scheduling/slots';
+import { HistoryList } from './history-list';
 
 export default async function PatientDashboardPage() {
     let session;
@@ -19,15 +20,25 @@ export default async function PatientDashboardPage() {
         where: { userId: session.user.id },
     });
 
-    const now = new Date();
     const appointments = await prisma.appointment.findMany({
         where: { patientProfileId: patientProfile.id },
         orderBy: { startUtc: 'desc' },
-        include: {
-            doctorProfile: { include: { user: { select: { name: true } } } },
-            familyMember: true,
-            reason: true,
-            rating: true,
+        select: {
+            id: true,
+            status: true,
+            bookingSubjectType: true,
+            doctorProfileId: true,
+            startUtc: true,
+            doctorProfile: {
+                select: {
+                    feeCents: true,
+                    user: { select: { name: true, image: true } },
+                    specialties: { select: { name: true } },
+                },
+            },
+            familyMember: { select: { fullName: true } },
+            reason: { select: { originalText: true, aiSummaryJson: true } },
+            rating: { select: { score: true, comment: true } },
         },
     });
 
@@ -35,8 +46,21 @@ export default async function PatientDashboardPage() {
     const upcoming = appointments.filter((a) => !TERMINAL_STATUSES.includes(a.status));
     const history = appointments.filter((a) => TERMINAL_STATUSES.includes(a.status));
 
+    // Convert Date objects to ISO strings for safe client serialization
+    const serializedHistory = history.map((a) => ({
+        ...a,
+        startUtc: a.startUtc.toISOString(),
+    }));
+
     const formatDate = (d: Date) =>
         new Intl.DateTimeFormat('en-IN', { timeZone: HOSPITAL_TIMEZONE, dateStyle: 'medium', timeStyle: 'short' }).format(d);
+
+    const formatCurrency = (amountCents: number) =>
+        (amountCents / 100).toLocaleString('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0,
+        });
 
     const getStatusBadgeStyle = (status: string) => {
         switch (status) {
@@ -54,7 +78,7 @@ export default async function PatientDashboardPage() {
     };
 
     return (
-        <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/30 via-stone-50/40 to-white text-slate-900">
+        <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-teal-50/30 via-stone-50/40 to-white text-slate-900">
             {/* Header */}
             <section className="border-b border-slate-200/80 bg-white/70 backdrop-blur-md">
                 <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -114,7 +138,7 @@ export default async function PatientDashboardPage() {
                                     className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md"
                                 >
                                     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                                        <div className="space-y-2">
+                                        <div className="space-y-4 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span
                                                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold font-mono ring-1 ring-inset ${getStatusBadgeStyle(
@@ -129,13 +153,43 @@ export default async function PatientDashboardPage() {
                                                 </span>
                                             </div>
 
-                                            <h3 className="text-xl font-serif font-bold text-slate-900">
-                                                {a.doctorProfile.user.name}
-                                            </h3>
+                                            {/* Doctor Information */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-slate-100 border border-slate-200">
+                                                    {a.doctorProfile.user.image ? (
+                                                        <Image
+                                                            src={a.doctorProfile.user.image}
+                                                            alt={a.doctorProfile.user.name ?? ''}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center font-bold font-serif text-teal-800 bg-teal-50">
+                                                            {a.doctorProfile.user.name?.charAt(0) ?? 'D'}
+                                                        </div>
+                                                    )}
+                                                </div>
 
-                                            <p className="text-xs font-mono text-slate-600">
-                                                🗓️ {formatDate(a.startUtc)}
-                                            </p>
+                                                <div>
+                                                    <h3 className="text-xl font-serif font-bold text-slate-900 leading-tight">
+                                                        {a.doctorProfile.user.name}
+                                                    </h3>
+                                                    {a.doctorProfile.specialties?.length > 0 && (
+                                                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                                            {a.doctorProfile.specialties.map((s) => s.name).join(', ')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1 text-xs">
+                                                <p className="font-mono text-slate-600" suppressHydrationWarning>
+                                                    🗓️ {formatDate(a.startUtc)}
+                                                </p>
+                                                <p className="font-semibold text-slate-700">
+                                                    Fee: {formatCurrency(a.doctorProfile.feeCents)}
+                                                </p>
+                                            </div>
 
                                             {a.reason?.originalText && (
                                                 <p className="text-xs text-slate-600 leading-relaxed pt-1">
@@ -195,97 +249,7 @@ export default async function PatientDashboardPage() {
                         </span>
                     </div>
 
-                    {history.length === 0 ? (
-                        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-8 text-center text-xs font-mono text-slate-500 shadow-sm">
-                            No previous appointments found.
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {history.map((a) => (
-                                <article
-                                    key={a.id}
-                                    className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm"
-                                >
-                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                        <div className="space-y-2 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold font-mono ring-1 ring-inset ${getStatusBadgeStyle(
-                                                        a.status
-                                                    )}`}
-                                                >
-                                                    {a.status}
-                                                </span>
-                                            </div>
-
-                                            <h3 className="text-lg font-serif font-bold text-slate-900">
-                                                {a.doctorProfile.user.name}
-                                            </h3>
-
-                                            <p className="text-xs font-mono text-slate-600">
-                                                🗓️ {formatDate(a.startUtc)}
-                                            </p>
-
-                                            <p className="text-xs text-slate-600">
-                                                For: {a.bookingSubjectType === 'SELF' ? 'You' : a.familyMember?.fullName}
-                                            </p>
-
-                                            {a.reason?.originalText && (
-                                                <p className="text-xs text-slate-600 leading-relaxed">
-                                                    <span className="font-semibold text-slate-700">Reason:</span> {a.reason.originalText}
-                                                </p>
-                                            )}
-
-                                            {a.reason?.aiSummaryJson && (
-                                                <details className="mt-3 rounded-2xl border border-teal-200/80 bg-teal-50/40 p-3 text-xs text-slate-700">
-                                                    <summary className="cursor-pointer font-semibold text-teal-800 select-none hover:underline">
-                                                        📋 AI-generated summary you attached
-                                                    </summary>
-                                                    <div className="mt-2.5 space-y-1.5 border-t border-teal-100 pt-2.5">
-                                                        <p>
-                                                            <strong>Suggested specialty:</strong>{' '}
-                                                            {(a.reason.aiSummaryJson as any).suggestedSpecialty}
-                                                        </p>
-                                                        <p className="leading-relaxed">
-                                                            {(a.reason.aiSummaryJson as any).patientEducationSummary}
-                                                        </p>
-                                                        {(a.reason.aiSummaryJson as any).urgencyNote && (
-                                                            <p className="text-[11px] text-amber-800 font-medium italic">
-                                                                {(a.reason.aiSummaryJson as any).urgencyNote}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </details>
-                                            )}
-
-                                            {/* Rating & Review Integration */}
-                                            {a.status === 'COMPLETED' && (
-                                                <div className="mt-4 pt-3 border-t border-slate-100">
-                                                    {a.rating ? (
-                                                        <div className="rounded-2xl border border-amber-200/60 bg-amber-50/30 p-3.5 text-xs text-slate-800">
-                                                            <div className="flex items-center gap-1.5 font-semibold text-amber-700">
-                                                                <span>{'★'.repeat(a.rating.score)}</span>
-                                                                <span className="font-mono text-slate-600">({a.rating.score}/5)</span>
-                                                            </div>
-                                                            {a.rating.comment && (
-                                                                <p className="mt-1.5 italic text-slate-600 leading-relaxed">
-                                                                    &ldquo;{a.rating.comment}&rdquo;
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="mt-2">
-                                                            <RatingForm appointmentId={a.id} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                    )}
+                    <HistoryList history={serializedHistory} />
                 </div>
 
                 {/* Navigation Actions */}
