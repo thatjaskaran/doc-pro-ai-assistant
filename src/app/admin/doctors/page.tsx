@@ -11,6 +11,7 @@ export default async function AdminDoctorsPage() {
   }
 
   const doctors = await getAllDoctorsForReview();
+  type DoctorReviewRow = Awaited<ReturnType<typeof getAllDoctorsForReview>>[number];
 
   return (
     <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/30 via-stone-50/40 to-white px-4 py-10 text-slate-900 selection:bg-teal-600 selection:text-white sm:px-6 lg:px-8">
@@ -39,7 +40,7 @@ export default async function AdminDoctorsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {doctors.map((d) => {
+            {doctors.map((d: DoctorReviewRow) => {
               const statusStyles = {
                 APPROVED: 'bg-teal-50 text-teal-800 border-teal-200',
                 REJECTED: 'bg-red-50 text-red-700 border-red-200',
