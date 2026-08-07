@@ -9,6 +9,8 @@ import { SYSTEM_PROMPT } from '@/lib/ai/system-prompt';
 import { checkRedFlags, checkTextForRedFlags } from '@/lib/ai/red-flags';
 import { searchDoctors } from '@/lib/doctors/repository';
 
+export const maxDuration = 30;
+
 const chatMessageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(1000) });
 
 const requestSchema = z.discriminatedUnion('mode', [
