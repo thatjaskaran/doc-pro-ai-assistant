@@ -41,11 +41,15 @@ export default async function AdminDoctorsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {doctors.map((d: DoctorReviewRow) => {
-              const statusStyles = {
+              const statusStyles: Record<string, string> = {
                 APPROVED: 'bg-teal-50 text-teal-800 border-teal-200',
                 REJECTED: 'bg-red-50 text-red-700 border-red-200',
                 PENDING: 'bg-amber-50 text-amber-800 border-amber-200',
-              }[d.applicationStatus] ?? 'bg-slate-50 text-slate-700 border-slate-200';
+              };
+
+              const currentStyle =
+                statusStyles[d.applicationStatus] ??
+                'bg-slate-50 text-slate-700 border-slate-200';
 
               return (
                 <article
@@ -60,7 +64,7 @@ export default async function AdminDoctorsPage() {
                         <h2 className="text-xl font-serif font-bold text-slate-900">
                           {d.user.name}
                         </h2>
-                        <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[10px] font-bold font-mono tracking-wider uppercase ${statusStyles}`}>
+                        <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[10px] font-bold font-mono tracking-wider uppercase ${currentStyle}`}>
                           {d.applicationStatus}
                         </span>
                       </div>
