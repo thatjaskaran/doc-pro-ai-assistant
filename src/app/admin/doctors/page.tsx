@@ -32,7 +32,7 @@ export default async function AdminDoctorsPage() {
         </div>
 
         {/* Applications List */}
-        {doctors.length === 0 ? (
+        {!doctors || doctors.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
             <p className="text-sm font-medium text-slate-500">
               No pending or registered doctor applications found.
@@ -47,13 +47,23 @@ export default async function AdminDoctorsPage() {
                 PENDING: 'bg-amber-50 text-amber-800 border-amber-200',
               };
 
+              const statusKey = String(d.applicationStatus || '');
               const currentStyle =
-                statusStyles[d.applicationStatus] ??
+                statusStyles[statusKey] ??
                 'bg-slate-50 text-slate-700 border-slate-200';
+
+              const formattedSpecialties = Array.isArray(d.specialties)
+                ? d.specialties
+                    .map((s: { name?: string } | string) =>
+                      typeof s === 'string' ? s : s?.name ?? ''
+                    )
+                    .filter(Boolean)
+                    .join(', ')
+                : '';
 
               return (
                 <article
-                  key={d.id}
+                  key={String(d.id)}
                   className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md sm:p-8"
                 >
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -62,7 +72,7 @@ export default async function AdminDoctorsPage() {
                     <div className="space-y-3 lg:max-w-xl">
                       <div className="flex items-center gap-3">
                         <h2 className="text-xl font-serif font-bold text-slate-900">
-                          {d.user.name}
+                          {d.user?.name ?? 'Unknown Doctor'}
                         </h2>
                         <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[10px] font-bold font-mono tracking-wider uppercase ${currentStyle}`}>
                           {d.applicationStatus}
@@ -70,10 +80,10 @@ export default async function AdminDoctorsPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                        <span className="font-medium text-slate-900">{d.user.email}</span>
+                        <span className="font-medium text-slate-900">{d.user?.email ?? 'No email'}</span>
                         <span className="text-slate-300">•</span>
                         <span className="font-mono text-teal-800">
-                          {d.specialties.map((s) => s.name).join(', ') || 'No specialty assigned'}
+                          {formattedSpecialties || 'No specialty assigned'}
                         </span>
                       </div>
 
@@ -87,7 +97,7 @@ export default async function AdminDoctorsPage() {
 
                     {/* Review Form Component */}
                     <div className="w-full lg:w-auto lg:min-w-[360px]">
-                      <ReviewForm doctorProfileId={d.id} currentStatus={d.applicationStatus} />
+                      <ReviewForm doctorProfileId={String(d.id)} currentStatus={String(d.applicationStatus)} />
                     </div>
 
                   </div>

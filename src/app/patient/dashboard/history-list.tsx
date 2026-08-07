@@ -215,7 +215,7 @@ export function HistoryList({ history }: { history: HistoryAppointment[] }) {
                                         href={`/doctors/${a.doctorProfileId}`}
                                         className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-slate-50 px-5 py-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-teal-50 hover:text-teal-800 hover:border-teal-200 active:scale-95"
                                     >
-                                        Book again with {a.doctorProfile?.user?.name?.split(' ')[0] ?? 'Doctor'}
+                                        Book again with {a.doctorProfile?.user?.name ?? 'Doctor'}
                                     </Link>
                                 </div>
                             </div>
