@@ -12,7 +12,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center">
 
           {/* Left Brand & Disclaimer Section */}
-          <div className="lg:col-span-7 space-y-3">
+          <div className="lg:col-span-7 space-y-3 text-center sm:text-left">
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-80"
@@ -30,26 +30,21 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Right Navigation Links */}
-          <div className="lg:col-span-5 lg:flex lg:justify-end">
+          {/* Right Navigation Links (Centered Container) */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-center">
             <nav
               aria-label="Footer Navigation"
-              className="flex flex-wrap items-center gap-x-6 m-2 gap-y-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm"
+              className="flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm"
             >
               <Link
                 href="/doctors"
-                className="text-xs font-semibold text-slate-700 transition-colors duration-150 hover:text-teal-800"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 transition-colors duration-150 hover:text-teal-800 hover:bg-slate-50"
               >
                 Find a Doctor
               </Link>
-            </nav>
-            <nav
-              aria-label="Footer Navigation"
-              className="flex flex-wrap items-center gap-x-6 m-2 gap-y-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm"
-            >
               <Link
                 href="/ai-assist"
-                className="text-xs font-semibold text-slate-700 transition-colors duration-150 hover:text-teal-800"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 transition-colors duration-150 hover:text-teal-800 hover:bg-slate-50"
               >
                 AI Assistant
               </Link>

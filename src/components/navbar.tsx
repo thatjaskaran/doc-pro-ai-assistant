@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { authClient } from '@/lib/auth/auth-client';
@@ -13,6 +13,7 @@ interface NavbarUser {
 
 const ROLE_LINKS: Record<string, { href: string; label: string }[]> = {
   PATIENT: [
+    { href: '/', label: 'Home' },
     { href: '/doctors', label: 'Find a Doctor' },
     { href: '/patient/dashboard', label: 'My Appointments' },
     { href: '/patient/profile', label: 'My Profile' },
@@ -24,7 +25,7 @@ const ROLE_LINKS: Record<string, { href: string; label: string }[]> = {
     { href: '/doctor/profile', label: 'My Profile' },
   ],
   ADMIN: [
-    { href: '/admin/dashboard', label: 'Overview' },
+    { href: '/admin/dashboard', label: 'Dashboard' },
     { href: '/admin/doctors', label: 'Doctor Applications' },
     { href: '/admin/doctors/performance', label: 'Doctor Performance' },
     { href: '/admin/specialties', label: 'Specialties' },
@@ -35,6 +36,7 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
 
   // Automatically close mobile menu when navigating to a new page
   useEffect(() => {
@@ -53,6 +55,25 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
     };
   }, [isMobileMenuOpen]);
 
+  // Close mobile menu when clicking outside of the navbar
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    }
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
   async function handleLogout() {
     setIsMobileMenuOpen(false);
     await authClient.signOut();
@@ -63,7 +84,7 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
   const links = user ? ROLE_LINKS[user.role] ?? [] : [{ href: '/doctors', label: 'Find a Doctor' }];
 
   return (
-    <header className="sticky top-0 z-50">
+    <header ref={navRef} className="sticky top-0 z-50">
       {/* Main Navbar */}
       <nav className="relative border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-md shadow-slate-900/5">
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
