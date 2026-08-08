@@ -3,6 +3,7 @@ import { ApplyDoctorForm } from './apply-doctor-form';
 
 export default async function ApplyDoctorPage() {
     const specialties = await getSpecialtiesWithDoctorCount();
+    type SpecialtyRow = Awaited<ReturnType<typeof getSpecialtiesWithDoctorCount>>[number];
 
     return (
         <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/30 via-stone-50/40 to-white text-slate-900">
@@ -27,7 +28,7 @@ export default async function ApplyDoctorPage() {
             {/* Form Container */}
             <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
                 <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-10">
-                    <ApplyDoctorForm specialties={specialties.map((s) => ({ id: s.id, name: s.name }))} />
+                    <ApplyDoctorForm specialties={specialties.map((s: SpecialtyRow) => ({ id: s.id, name: s.name }))} />
                 </div>
             </section>
         </main>
