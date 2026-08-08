@@ -1,6 +1,15 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import type { Appointment, Prisma } from '@prisma/client';
+
+type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
+    include: {
+        patientProfile: { include: { user: { select: { name: true } } } };
+        familyMember: true;
+        rating: true;
+    };
+}>;
 import { requireRole } from '@/lib/auth/session';
 import { getDoctorPerformanceDetail } from '@/lib/admin/repository';
 import { HOSPITAL_TIMEZONE } from '@/lib/scheduling/slots';
@@ -176,7 +185,7 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {appointments.map((a) => (
+                        {appointments.map((a: AppointmentWithRelations) => (
                             <article
                                 key={a.id}
                                 className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md"
