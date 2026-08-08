@@ -1,17 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { grantAiConsent } from './actions';
 
 export function ConsentGate() {
     const router = useRouter();
-    const [submitting, setSubmitting] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const [error, setError] = useState<string | null>(null);
 
-    async function handleConsent() {
-        setSubmitting(true);
-        await grantAiConsent();
-        router.refresh();
+    const consentItems: readonly string[] = [
+        'Your description will be sent to an AI service to generate general guidance.',
+        'This assistant does not diagnose conditions or recommend medications.',
+        "If you show signs of a medical emergency, you'll be directed to seek emergency care instead.",
+        'You choose whether to attach any generated summary to an appointment — nothing is saved unless you do.',
+    ];
+
+    function handleConsent(): void {
+        setError(null);
+
+        startTransition(async () => {
+            try {
+                await grantAiConsent();
+                router.refresh();
+            } catch (err: unknown) {
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError('An unexpected error occurred. Please try again.');
+                }
+            }
+        });
     }
 
     return (
@@ -25,15 +44,16 @@ export function ConsentGate() {
                 </p>
             </div>
 
+            {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-medium text-red-700">
+                    {error}
+                </div>
+            )}
+
             <ul className="space-y-3.5">
-                {[
-                    'Your description will be sent to an AI service to generate general guidance.',
-                    'This assistant does not diagnose conditions or recommend medications.',
-                    "If you show signs of a medical emergency, you'll be directed to seek emergency care instead.",
-                    'You choose whether to attach any generated summary to an appointment — nothing is saved unless you do.',
-                ].map((item, idx) => (
+                {consentItems.map((item: string, idx: number) => (
                     <li
-                        key={idx}
+                        key={`consent-item-${idx}`}
                         className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 text-xs font-medium leading-relaxed text-slate-700 shadow-sm"
                     >
                         <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800">
@@ -59,10 +79,10 @@ export function ConsentGate() {
             <button
                 type="button"
                 onClick={handleConsent}
-                disabled={submitting}
+                disabled={isPending}
                 className="w-full rounded-2xl bg-teal-800 py-3.5 font-mono text-xs font-semibold text-white shadow-sm transition hover:bg-teal-900 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
-                {submitting ? (
+                {isPending ? (
                     <span className="flex items-center justify-center gap-2">
                         <svg
                             className="h-4 w-4 animate-spin text-white"

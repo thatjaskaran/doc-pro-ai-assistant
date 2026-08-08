@@ -3,6 +3,16 @@ import { requireRole } from '@/lib/auth/session';
 import { getSpecialtiesWithDoctorCount } from '@/lib/admin/repository';
 import { CreateSpecialtyForm, DeleteSpecialtyButton } from './specialty-form';
 
+// Interface for Prisma/Database aggregate response structure
+interface SpecialtyWithCount {
+  id: string;
+  name: string;
+  description?: string | null;
+  _count?: {
+    doctors?: number;
+  };
+}
+
 export default async function AdminSpecialtiesPage() {
   try {
     await requireRole('ADMIN');
@@ -10,7 +20,11 @@ export default async function AdminSpecialtiesPage() {
     redirect('/sign-in?redirectTo=/admin/specialties');
   }
 
-  const specialties = await getSpecialtiesWithDoctorCount();
+  // Cast or infer the returned array safely
+  const rawSpecialties = await getSpecialtiesWithDoctorCount();
+  const specialties: SpecialtyWithCount[] = Array.isArray(rawSpecialties)
+    ? (rawSpecialties as SpecialtyWithCount[])
+    : [];
 
   return (
     <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/30 via-stone-50/40 to-white px-4 py-10 text-slate-900 selection:bg-teal-600 selection:text-white sm:px-6 lg:px-8">
@@ -47,37 +61,41 @@ export default async function AdminSpecialtiesPage() {
                 </p>
               </div>
             ) : (
-              specialties.map((s) => (
-                <article
-                  key={s.id}
-                  className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md"
-                >
-                  <div className="space-y-1 sm:max-w-md">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-lg font-serif font-bold text-slate-900">
-                        {s.name}
-                      </h2>
-                      <span className="inline-block rounded-md border border-teal-200/80 bg-teal-50 px-2 py-0.5 text-[10px] font-bold font-mono text-teal-800">
-                        {s._count.doctors} doctor{s._count.doctors === 1 ? '' : 's'}
-                      </span>
+              specialties.map((s) => {
+                const doctorCount = s._count?.doctors ?? 0;
+
+                return (
+                  <article
+                    key={s.id}
+                    className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="space-y-1 sm:max-w-md">
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-lg font-serif font-bold text-slate-900">
+                          {s.name}
+                        </h2>
+                        <span className="inline-block rounded-md border border-teal-200/80 bg-teal-50 px-2 py-0.5 text-[10px] font-bold font-mono text-teal-800">
+                          {doctorCount} doctor{doctorCount === 1 ? '' : 's'}
+                        </span>
+                      </div>
+
+                      {s.description ? (
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {s.description}
+                        </p>
+                      ) : (
+                        <p className="text-xs italic text-slate-400">
+                          No description provided.
+                        </p>
+                      )}
                     </div>
 
-                    {s.description ? (
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        {s.description}
-                      </p>
-                    ) : (
-                      <p className="text-xs italic text-slate-400">
-                        No description provided.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="sm:shrink-0">
-                    <DeleteSpecialtyButton specialtyId={s.id} />
-                  </div>
-                </article>
-              ))
+                    <div className="sm:shrink-0">
+                      <DeleteSpecialtyButton specialtyId={s.id} />
+                    </div>
+                  </article>
+                );
+              })
             )}
           </div>
 

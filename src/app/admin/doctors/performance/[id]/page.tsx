@@ -21,12 +21,12 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
     if (!data) notFound();
     const { doctor, appointments } = data;
 
-    const formatDate = (d: Date) =>
+    const formatDate = (d: Date | string | number) =>
         new Intl.DateTimeFormat('en-IN', {
             timeZone: HOSPITAL_TIMEZONE,
             dateStyle: 'medium',
             timeStyle: 'short',
-        }).format(d);
+        }).format(new Date(d));
 
     const formatCurrency = (amountCents: number) =>
         (amountCents / 100).toLocaleString('en-IN', {
@@ -79,7 +79,7 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                     <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-4">
                             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 shadow-sm">
-                                {doctor.user.image ? (
+                                {doctor.user?.image ? (
                                     <Image
                                         src={doctor.user.image}
                                         alt={doctor.user.name ?? ''}
@@ -88,7 +88,7 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                                     />
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center font-bold font-serif text-teal-800 bg-teal-50 text-xl">
-                                        {doctor.user.name?.charAt(0) ?? 'D'}
+                                        {doctor.user?.name?.charAt(0) ?? 'D'}
                                     </div>
                                 )}
                             </div>
@@ -96,7 +96,7 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                             <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h1 className="text-2xl font-serif font-bold tracking-tight text-slate-900 sm:text-3xl">
-                                        {doctor.user.name}
+                                        {doctor.user?.name}
                                     </h1>
                                     <span
                                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold font-mono ring-1 ring-inset ${getDoctorStatusBadgeStyle(
@@ -107,11 +107,14 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                                     </span>
                                 </div>
 
-                                <p className="text-xs text-slate-500">{doctor.user.email}</p>
+                                <p className="text-xs text-slate-500">{doctor.user?.email}</p>
 
                                 {doctor.specialties?.length > 0 && (
                                     <p className="text-xs font-medium text-teal-800">
-                                        {doctor.specialties.map((s) => s.name).join(', ')}
+                                        {doctor.specialties
+                                            .map((s: { name?: string }) => s?.name)
+                                            .filter(Boolean)
+                                            .join(', ')}
                                     </p>
                                 )}
                             </div>
@@ -197,12 +200,12 @@ export default async function DoctorPerformanceDetailPage({ params }: PageProps)
                                         <div className="text-xs text-slate-700">
                                             <span className="font-semibold text-slate-900">Patient:</span>{' '}
                                             {a.bookingSubjectType === 'SELF' ? (
-                                                <span>{a.patientProfile.user.name}</span>
+                                                <span>{a.patientProfile?.user?.name}</span>
                                             ) : (
                                                 <span>
                                                     {a.familyMember?.fullName}{' '}
                                                     <span className="text-slate-400">
-                                                        (via {a.patientProfile.user.name})
+                                                        (via {a.patientProfile?.user?.name})
                                                     </span>
                                                 </span>
                                             )}
