@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
     include: {
