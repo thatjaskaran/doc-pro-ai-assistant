@@ -1,19 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Prisma } from '@prisma/client';
-
-type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
-    include: {
-        patientProfile: { include: { user: { select: { name: true } } } };
-        familyMember: true;
-        rating: true;
-    };
-}>;
 import { requireRole } from '@/lib/auth/session';
 import { getDoctorPerformanceDetail } from '@/lib/admin/repository';
 import { HOSPITAL_TIMEZONE } from '@/lib/scheduling/slots';
 
+type PerformanceDetail = Awaited<ReturnType<typeof getDoctorPerformanceDetail>>;
+type AppointmentWithRelations = NonNullable<PerformanceDetail>['appointments'][number];
 interface PageProps {
     params: Promise<{ id: string }>;
 }
